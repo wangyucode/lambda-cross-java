@@ -104,7 +104,7 @@ class HttpServerHandler : SimpleChannelInboundHandler<Any>() {
                 HttpVersion.HTTP_1_1, status,
                 Unpooled.copiedBuffer(sb.toString(), CharsetUtil.UTF_8))
 
-        response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8")
+        response.headers().set(HttpHeaderNames.CONTENT_TYPE, "${HttpHeaderValues.TEXT_PLAIN}; charset=UTF-8")
 
         if (keepAlive) {
             // Add 'Content-Length' header only for a keep-alive connection.
