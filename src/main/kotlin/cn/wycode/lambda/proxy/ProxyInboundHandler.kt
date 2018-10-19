@@ -1,8 +1,10 @@
 package cn.wycode.lambda.proxy
 
 import io.netty.bootstrap.Bootstrap
+import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.*
+import io.netty.util.CharsetUtil
 
 class ProxyInboundHandler : ChannelInboundHandlerAdapter() {
 
@@ -20,7 +22,7 @@ class ProxyInboundHandler : ChannelInboundHandlerAdapter() {
                 .handler(ProxyOutBoundHandle(inboundChannel))
                 .option(ChannelOption.AUTO_READ, false)
 
-        val f = outboundClient.connect("baidu.com", 80)
+        val f = outboundClient.connect("1601928733909937.cn-hongkong.fc.aliyuncs.com", 443)
         outboundChannel = f.channel()
         f.addListener { future ->
             if (future.isSuccess) {
@@ -35,6 +37,9 @@ class ProxyInboundHandler : ChannelInboundHandlerAdapter() {
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
         println("ProxyInboundHandler<<<" + msg.toString())
+        val byteBuf = msg as ByteBuf
+        val originRequest = byteBuf.toString(CharsetUtil.UTF_8)
+        val header = ""
         if (outboundChannel!!.isActive) {
             outboundChannel!!.writeAndFlush(msg).addListener(object : ChannelFutureListener {
                 override fun operationComplete(future: ChannelFuture) {
@@ -45,7 +50,6 @@ class ProxyInboundHandler : ChannelInboundHandlerAdapter() {
                         future.channel().close()
                     }
                 }
-
             })
         }
     }

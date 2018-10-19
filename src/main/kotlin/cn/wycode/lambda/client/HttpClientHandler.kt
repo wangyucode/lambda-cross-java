@@ -5,6 +5,7 @@ import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.http.HttpObject
 
 class HttpClientHandler: SimpleChannelInboundHandler<HttpObject>() {
+
     override fun channelRead0(ctx: ChannelHandlerContext, msg: HttpObject) {
         println(msg)
     }
