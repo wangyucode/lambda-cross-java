@@ -1,16 +1,26 @@
-package cn.wycode.lambda.proxy
+package cn.wycode.lambda.proxy.outbound
 
+import cn.wycode.lambda.proxy.inbound.ProxyInboundHandler
 import io.netty.channel.*
+import io.netty.handler.codec.http.DefaultHttpContent
+import io.netty.handler.codec.http.DefaultLastHttpContent
+import io.netty.handler.codec.http.HttpObject
+import io.netty.util.CharsetUtil
 
-class ProxyOutBoundHandle(val inboundChannel: Channel) : ChannelInboundHandlerAdapter() {
+class ProxyOutboundHandler(private val inboundChannel: Channel) : SimpleChannelInboundHandler<HttpObject>() {
 
     override fun channelActive(ctx: ChannelHandlerContext) {
         println("ProxyOutBoundHandle==")
         ctx.read()
     }
 
-    override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
-        println("ProxyOutBoundHandle<<<" + msg.toString())
+    override fun channelRead0(ctx: ChannelHandlerContext, msg: HttpObject) {
+        if (msg is DefaultHttpContent){
+            println("ProxyOutBoundHandle<<<" + msg.content().toString(CharsetUtil.UTF_8))
+            msg.retain()
+        }else{
+            println("ProxyOutBoundHandle<<<" + msg.toString())
+        }
         inboundChannel.writeAndFlush(msg).addListener(object : ChannelFutureListener {
             override fun operationComplete(future: ChannelFuture) {
                 if (future.isSuccess) {
@@ -23,7 +33,6 @@ class ProxyOutBoundHandle(val inboundChannel: Channel) : ChannelInboundHandlerAd
         })
     }
 
-
     override fun channelInactive(ctx: ChannelHandlerContext) {
         println("ProxyOutBoundHandle!=")
         ProxyInboundHandler.closeOnFlush(inboundChannel)
@@ -33,4 +42,5 @@ class ProxyOutBoundHandle(val inboundChannel: Channel) : ChannelInboundHandlerAd
         cause.printStackTrace()
         ProxyInboundHandler.closeOnFlush(ctx.channel())
     }
+
 }

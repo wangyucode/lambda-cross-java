@@ -1,16 +1,19 @@
-package cn.wycode.lambda.proxy
+package cn.wycode.lambda.proxy.inbound
 
+import cn.wycode.lambda.proxy.config.AliyunConfig
+import cn.wycode.lambda.proxy.outbound.ProxyOutboundInitializer
 import io.netty.bootstrap.Bootstrap
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.*
+import io.netty.handler.codec.http.*
 import io.netty.util.CharsetUtil
 
-class ProxyInboundHandler : ChannelInboundHandlerAdapter() {
+class ProxyInboundHandler(val aliyunConfig: AliyunConfig) : ChannelInboundHandlerAdapter() {
 
     // As we use inboundChannel.eventLoop() when building the Bootstrap this does not need to be volatile as
     // the outboundChannel will use the same EventLoop (and therefore Thread) as the inboundChannel.
-    var outboundChannel: Channel? = null
+    private var outboundChannel: Channel? = null
 
 
     override fun channelActive(ctx: ChannelHandlerContext) {
@@ -19,10 +22,10 @@ class ProxyInboundHandler : ChannelInboundHandlerAdapter() {
         val outboundClient = Bootstrap()
         outboundClient.group(inboundChannel.eventLoop())
                 .channel(inboundChannel.javaClass)
-                .handler(ProxyOutBoundHandle(inboundChannel))
+                .handler(ProxyOutboundInitializer(inboundChannel))
                 .option(ChannelOption.AUTO_READ, false)
 
-        val f = outboundClient.connect("1601928733909937.cn-hongkong.fc.aliyuncs.com", 443)
+        val f = outboundClient.connect(aliyunConfig.host, aliyunConfig.port)
         outboundChannel = f.channel()
         f.addListener { future ->
             if (future.isSuccess) {
@@ -36,12 +39,17 @@ class ProxyInboundHandler : ChannelInboundHandlerAdapter() {
     }
 
     override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
-        println("ProxyInboundHandler<<<" + msg.toString())
         val byteBuf = msg as ByteBuf
-        val originRequest = byteBuf.toString(CharsetUtil.UTF_8)
-        val header = ""
+        println("ProxyInboundHandler<<<" + msg.toString(CharsetUtil.UTF_8))
+        // Prepare the HTTP request.
+        val request = DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, aliyunConfig.path)
+        request.headers().set(HttpHeaderNames.HOST, aliyunConfig.host)
+        request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE)
+        request.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.TEXT_PLAIN)
+        request.headers().set(HttpHeaderNames.CONTENT_LENGTH, byteBuf.writerIndex())
+        request.content().writeBytes(byteBuf)
         if (outboundChannel!!.isActive) {
-            outboundChannel!!.writeAndFlush(msg).addListener(object : ChannelFutureListener {
+            outboundChannel!!.writeAndFlush(request).addListener(object : ChannelFutureListener {
                 override fun operationComplete(future: ChannelFuture) {
                     if (future.isSuccess) {
                         // was able to flush out data, start to read the next chunk
