@@ -1,7 +1,9 @@
 package cn.wycode.lambda.proxy.inbound
 
+import cn.wycode.lambda.proxy.Request
 import cn.wycode.lambda.proxy.config.AliyunConfig
 import cn.wycode.lambda.proxy.outbound.ProxyOutboundInitializer
+import com.alibaba.fastjson.JSON
 import io.netty.bootstrap.Bootstrap
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
@@ -9,11 +11,42 @@ import io.netty.channel.*
 import io.netty.handler.codec.http.*
 import io.netty.util.CharsetUtil
 
-class ProxyInboundHandler(val aliyunConfig: AliyunConfig) : ChannelInboundHandlerAdapter() {
+class ProxyInboundHandler(val aliyunConfig: AliyunConfig) : SimpleChannelInboundHandler<FullHttpRequest>() {
+
 
     // As we use inboundChannel.eventLoop() when building the Bootstrap this does not need to be volatile as
     // the outboundChannel will use the same EventLoop (and therefore Thread) as the inboundChannel.
     private var outboundChannel: Channel? = null
+
+    override fun channelRead0(ctx: ChannelHandlerContext, msg: FullHttpRequest) {
+        println("ProxyInboundHandler<<<" + msg.toString())
+        val headers = msg.headers()
+        val headerMap = HashMap<String, String>(headers.size())
+        headers.forEach { headerMap[it.key] = it.value }
+
+        val outboundBody = Request(msg.method().name(), msg.uri(), msg.protocolVersion().text(), headerMap)
+        val outboundJson = JSON.toJSONString(outboundBody)
+        val request = DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, aliyunConfig.path)
+        request.headers().set(HttpHeaderNames.HOST, aliyunConfig.host)
+        request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE)
+        request.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
+        request.headers().set(HttpHeaderNames.CONTENT_LENGTH, outboundJson.length)
+        request.content().writeCharSequence(outboundJson,CharsetUtil.UTF_8)
+
+        if (outboundChannel!!.isActive) {
+            println("ProxyInboundHandler>>>$outboundJson")
+            outboundChannel!!.writeAndFlush(request).addListener(object : ChannelFutureListener {
+                override fun operationComplete(future: ChannelFuture) {
+                    if (future.isSuccess) {
+                        // was able to flush out data, start to read the next chunk
+                        ctx.channel().read()
+                    } else {
+                        future.channel().close()
+                    }
+                }
+            })
+        }
+    }
 
 
     override fun channelActive(ctx: ChannelHandlerContext) {
@@ -38,29 +71,6 @@ class ProxyInboundHandler(val aliyunConfig: AliyunConfig) : ChannelInboundHandle
         }
     }
 
-    override fun channelRead(ctx: ChannelHandlerContext, msg: Any) {
-        val byteBuf = msg as ByteBuf
-        println("ProxyInboundHandler<<<" + msg.toString(CharsetUtil.UTF_8))
-        // Prepare the HTTP request.
-        val request = DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, aliyunConfig.path)
-        request.headers().set(HttpHeaderNames.HOST, aliyunConfig.host)
-        request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE)
-        request.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.TEXT_PLAIN)
-        request.headers().set(HttpHeaderNames.CONTENT_LENGTH, byteBuf.writerIndex())
-        request.content().writeBytes(byteBuf)
-        if (outboundChannel!!.isActive) {
-            outboundChannel!!.writeAndFlush(request).addListener(object : ChannelFutureListener {
-                override fun operationComplete(future: ChannelFuture) {
-                    if (future.isSuccess) {
-                        // was able to flush out data, start to read the next chunk
-                        ctx.channel().read()
-                    } else {
-                        future.channel().close()
-                    }
-                }
-            })
-        }
-    }
 
     override fun channelInactive(ctx: ChannelHandlerContext) {
         if (outboundChannel != null) {

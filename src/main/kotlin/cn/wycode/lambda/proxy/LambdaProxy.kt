@@ -6,12 +6,9 @@ import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.ChannelOption
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.nio.NioServerSocketChannel
-import io.netty.handler.logging.LogLevel
-import io.netty.handler.logging.LoggingHandler
-import java.lang.RuntimeException
 
 fun main(args: Array<String>) {
-    if(args.isEmpty()){
+    if (args.isEmpty()) {
         throw RuntimeException("请提供阿里云函数地址")
     }
     val url = args[0]
