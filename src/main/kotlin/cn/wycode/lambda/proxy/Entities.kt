@@ -3,8 +3,7 @@ package cn.wycode.lambda.proxy
 data class Request(val method: String,
                    val uri: String,
                    val protocolVersion: String,
-                   val headers: Map<String, String>,
-                   val body:String ="你abc好")
+                   val headers: Map<String, String>)
 
 
 data class Response(
