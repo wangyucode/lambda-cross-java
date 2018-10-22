@@ -23,7 +23,6 @@ class ProxyInboundHandler(val aliyunConfig: AliyunConfig) : SimpleChannelInbound
         val headers = msg.headers()
         val headerMap = HashMap<String, String>(headers.size())
         headers.forEach { headerMap[it.key] = it.value }
-
         val outboundBody = Request(msg.method().name(), msg.uri(), msg.protocolVersion().text(), headerMap)
         val outboundJson = JSON.toJSONString(outboundBody)
         val request = DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, aliyunConfig.path)

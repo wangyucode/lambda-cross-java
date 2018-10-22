@@ -12,6 +12,7 @@ import io.netty.handler.logging.LoggingHandler
 class ProxyInboundInitializer(val aliyunConfig: AliyunConfig) : ChannelInitializer<SocketChannel>() {
     override fun initChannel(ch: SocketChannel) {
         val p = ch.pipeline()
+//        p.addLast(LoggingHandler(LogLevel.INFO))
         p.addLast(HttpRequestDecoder())
         // Uncomment the following line if you don't want to handle HttpChunks.
         p.addLast(HttpObjectAggregator(2097152))

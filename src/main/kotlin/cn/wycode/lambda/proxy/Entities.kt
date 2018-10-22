@@ -9,5 +9,5 @@ data class Request(val method: String,
 data class Response(
         val code: Int = 0,
         val error: String? = null,
-        val headers: Map<String, String> = HashMap(),
-        val content: String = "")
+        val headers: Map<String, String>? = HashMap(),
+        var content: String? = "")
