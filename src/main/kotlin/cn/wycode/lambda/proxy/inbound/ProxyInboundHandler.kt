@@ -19,7 +19,7 @@ class ProxyInboundHandler(val aliyunConfig: AliyunConfig) : SimpleChannelInbound
     private var outboundChannel: Channel? = null
 
     override fun channelRead0(ctx: ChannelHandlerContext, msg: ByteBuf) {
-        println("ProxyInboundHandler<<<" + msg.toString())
+        println("ProxyInboundHandler<<<" + msg.toString(CharsetUtil.UTF_8))
 //        val headers = msg.headers()
 //        val headerMap = HashMap<String, String>(headers.size())
 //        headers.forEach { headerMap[it.key] = it.value }
@@ -27,14 +27,14 @@ class ProxyInboundHandler(val aliyunConfig: AliyunConfig) : SimpleChannelInbound
 //        val outboundJson = JSON.toJSONString(outboundBody)
         val request = DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, aliyunConfig.path)
         request.headers().set(HttpHeaderNames.HOST, aliyunConfig.host)
-        request.headers().set(HttpHeaderNames.CONNECTION, "keep-alive")
+        request.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE)
         request.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
         request.headers().set(HttpHeaderNames.CONTENT_LENGTH, msg.writerIndex())
 //        request.content().writeCharSequence(outboundJson, CharsetUtil.UTF_8)
         request.content().writeBytes(msg)
 //
         if (outboundChannel!!.isActive) {
-            println("ProxyInboundHandler>>>$msg")
+            println("ProxyInboundHandler>>>${request.content().toString(CharsetUtil.UTF_8)}")
             outboundChannel!!.writeAndFlush(request).addListener(object : ChannelFutureListener {
                 override fun operationComplete(future: ChannelFuture) {
                     if (future.isSuccess) {

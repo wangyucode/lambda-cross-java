@@ -29,39 +29,39 @@ class ProxyOutboundHandler(private val inboundChannel: Channel) : SimpleChannelI
         println("ProxyOutBoundHandle<<<$msg")
         val body = msg.content().toString(CharsetUtil.UTF_8)
         println("ProxyOutBoundHandle body<<<$body")
-        val proxyResponse = try {
-            JSON.parseObject(body, Response::class.java)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            msg.retain()
-            inboundChannel.writeAndFlush(msg).addListener(object : ChannelFutureListener {
-                override fun operationComplete(future: ChannelFuture) {
-                    if (future.isSuccess) {
-                        // was able to flush out data, start to read the next chunk
-                        ctx.channel().read()
-                    } else {
-                        future.channel().close()
-                    }
-                }
-            })
-            return
-        }
-        val headers = CombinedHttpHeaders(true)
-        var outBytes:ByteArray? = null
-        if (proxyResponse.error == null) {
-            for (header in proxyResponse.headers!!) {
-                headers[header.key] = header.value
-            }
-            outBytes = Base64.getDecoder().decode(proxyResponse.content)
-        }else{
-            outBytes = proxyResponse.error.toByteArray()
-        }
-        val response = DefaultFullHttpResponse(HttpVersion.HTTP_1_1,
-                HttpResponseStatus.valueOf(proxyResponse.code),
-                Unpooled.wrappedBuffer(outBytes),
-                headers, DefaultHttpHeaders())
-
-        inboundChannel.writeAndFlush(response).addListener(object : ChannelFutureListener {
+//        val proxyResponse = try {
+//            JSON.parseObject(body, Response::class.java)
+//        } catch (e: Exception) {
+//            e.printStackTrace()
+//            msg.retain()
+//            inboundChannel.writeAndFlush(msg).addListener(object : ChannelFutureListener {
+//                override fun operationComplete(future: ChannelFuture) {
+//                    if (future.isSuccess) {
+//                        // was able to flush out data, start to read the next chunk
+//                        ctx.channel().read()
+//                    } else {
+//                        future.channel().close()
+//                    }
+//                }
+//            })
+//            return
+//        }
+//        val headers = CombinedHttpHeaders(true)
+//        var outBytes:ByteArray? = null
+//        if (proxyResponse.error == null) {
+//            for (header in proxyResponse.headers!!) {
+//                headers[header.key] = header.value
+//            }
+//            outBytes = Base64.getDecoder().decode(proxyResponse.content)
+//        }else{
+//            outBytes = proxyResponse.error.toByteArray()
+//        }
+//        val response = DefaultFullHttpResponse(HttpVersion.HTTP_1_1,
+//                HttpResponseStatus.valueOf(proxyResponse.code),
+//                Unpooled.wrappedBuffer(outBytes),
+//                headers, DefaultHttpHeaders())
+        msg.retain()
+        inboundChannel.writeAndFlush(msg.content()).addListener(object : ChannelFutureListener {
             override fun operationComplete(future: ChannelFuture) {
                 if (future.isSuccess) {
                     // was able to flush out data, start to read the next chunk
