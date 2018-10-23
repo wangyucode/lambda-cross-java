@@ -56,7 +56,6 @@ class ProxyOutboundHandler(private val inboundChannel: Channel) : SimpleChannelI
         }else{
             outBytes = proxyResponse.error.toByteArray()
         }
-
         val response = DefaultFullHttpResponse(HttpVersion.HTTP_1_1,
                 HttpResponseStatus.valueOf(proxyResponse.code),
                 Unpooled.wrappedBuffer(outBytes),
